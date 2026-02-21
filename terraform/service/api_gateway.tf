@@ -1,4 +1,4 @@
-# API Gateway REST API: /hand-history routes (upload URL, list files, download URL), Cognito authorizer.
+# API Gateway REST API: /upload-url, /files, /download (no /hand-history prefix). Cognito authorizer.
 # Unauthenticated or invalid tokens receive 401 (Cognito authorizer default).
 
 # ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ resource "aws_lambda_function" "download_url" {
 }
 
 # ---------------------------------------------------------------------------
-# REST API and /hand-history resource
+# REST API (paths at root: /upload-url, /files, /download)
 # ---------------------------------------------------------------------------
 
 resource "aws_api_gateway_rest_api" "hand_history" {
@@ -49,12 +49,6 @@ resource "aws_api_gateway_rest_api" "hand_history" {
   endpoint_configuration {
     types = ["REGIONAL"]
   }
-}
-
-resource "aws_api_gateway_resource" "hand_history" {
-  rest_api_id = aws_api_gateway_rest_api.hand_history.id
-  parent_id   = aws_api_gateway_rest_api.hand_history.root_resource_id
-  path_part   = "hand-history"
 }
 
 # Cognito authorizer: invalid or missing token → 401
@@ -73,12 +67,12 @@ locals {
 data "aws_caller_identity" "current" {}
 
 # ---------------------------------------------------------------------------
-# POST /hand-history/upload-url
+# POST /upload-url
 # ---------------------------------------------------------------------------
 
 resource "aws_api_gateway_resource" "upload_url" {
   rest_api_id = aws_api_gateway_rest_api.hand_history.id
-  parent_id   = aws_api_gateway_resource.hand_history.id
+  parent_id   = aws_api_gateway_rest_api.hand_history.root_resource_id
   path_part   = "upload-url"
 }
 
@@ -108,12 +102,12 @@ resource "aws_lambda_permission" "upload_url" {
 }
 
 # ---------------------------------------------------------------------------
-# GET /hand-history/files
+# GET /files
 # ---------------------------------------------------------------------------
 
 resource "aws_api_gateway_resource" "files" {
   rest_api_id = aws_api_gateway_rest_api.hand_history.id
-  parent_id   = aws_api_gateway_resource.hand_history.id
+  parent_id   = aws_api_gateway_rest_api.hand_history.root_resource_id
   path_part   = "files"
 }
 
@@ -143,12 +137,12 @@ resource "aws_lambda_permission" "list_files" {
 }
 
 # ---------------------------------------------------------------------------
-# GET /hand-history/download (query: jobId)
+# GET /download (query: jobId)
 # ---------------------------------------------------------------------------
 
 resource "aws_api_gateway_resource" "download" {
   rest_api_id = aws_api_gateway_rest_api.hand_history.id
-  parent_id   = aws_api_gateway_resource.hand_history.id
+  parent_id   = aws_api_gateway_rest_api.hand_history.root_resource_id
   path_part   = "download"
 }
 
@@ -197,16 +191,26 @@ resource "aws_api_gateway_stage" "hand_history" {
 }
 
 # ---------------------------------------------------------------------------
-# Custom domain: reuse existing API Gateway domain name (e.g. api.allansattelbergrivera.com).
-# Base path mapping attaches this API to that domain.
+# Custom domain: hand_history_api_domain (e.g. hand-history.api...) with ACM cert hand_history_domain_cert.
+# Base path mapping at root so URLs are https://<domain>/upload-url, /files, /download.
 # ---------------------------------------------------------------------------
 
-data "aws_api_gateway_domain_name" "hand_history" {
-  domain_name = var.api_domain
+data "aws_acm_certificate" "hand_history_domain" {
+  domain      = var.hand_history_domain_cert
+  most_recent = true
+  statuses    = ["ISSUED"]
+}
+
+resource "aws_api_gateway_domain_name" "hand_history" {
+  domain_name              = var.hand_history_api_domain
+  regional_certificate_arn  = data.aws_acm_certificate.hand_history_domain.arn
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
 }
 
 resource "aws_api_gateway_base_path_mapping" "hand_history" {
   api_id      = aws_api_gateway_rest_api.hand_history.id
   stage_name  = aws_api_gateway_stage.hand_history.stage_name
-  domain_name = data.aws_api_gateway_domain_name.hand_history.domain_name
+  domain_name = aws_api_gateway_domain_name.hand_history.domain_name
 }

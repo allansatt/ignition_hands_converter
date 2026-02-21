@@ -9,7 +9,7 @@ resource "aws_dynamodb_table" "pokerhands_jobs" {
   name         = "pokerhands-jobs"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "userId"
-  range_key    = "jobId"
+  range_key    = "createdAt"
 
   attribute {
     name = "userId"
@@ -32,7 +32,4 @@ resource "aws_dynamodb_table" "pokerhands_jobs" {
     projection_type = "ALL"
   }
 
-  tags = {
-    Purpose = "Poker hand history job and file metadata"
-  }
 }

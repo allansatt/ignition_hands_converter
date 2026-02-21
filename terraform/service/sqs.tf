@@ -4,10 +4,6 @@
 
 resource "aws_sqs_queue" "transcode_dlq" {
   name = "pokerhands-transcode-dlq"
-
-  tags = {
-    Purpose = "Dead-letter queue for failed transcode job messages"
-  }
 }
 
 resource "aws_sqs_queue" "transcode_queue" {
@@ -17,10 +13,6 @@ resource "aws_sqs_queue" "transcode_queue" {
     deadLetterTargetArn = aws_sqs_queue.transcode_dlq.arn
     maxReceiveCount     = var.transcode_dlq_max_receive_count
   })
-
-  tags = {
-    Purpose = "Transcode job queue (EventBridge → SQS → Lambda)"
-  }
 }
 
 output "transcode_queue_arn" {

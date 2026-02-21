@@ -5,11 +5,7 @@
 #   - Outputs:  users/{userId}/transcoded/{requestId}/{outputName}
 
 resource "aws_s3_bucket" "pokerhands" {
-  bucket = "pokerhands"
-
-  tags = {
-    Purpose = "Poker hand history uploads and transcoded files"
-  }
+  bucket = "allansattelbergrivera-pokerhands"
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "pokerhands" {

@@ -18,8 +18,8 @@ output "pokerhands_jobs_table_arn" {
   value       = aws_dynamodb_table.pokerhands_jobs.arn
 }
 
-# Custom domain (existing): regional target for api_domain.
-output "api_gateway_domain_target" {
-  description = "API Gateway regional domain name for the existing custom domain"
-  value       = data.aws_api_gateway_domain_name.hand_history.regional_domain_name
+# Custom domain hand-history.api...: point DNS (CNAME/A) to this target.
+output "hand_history_api_domain_target" {
+  description = "API Gateway regional domain name; point hand_history_api_domain DNS here"
+  value       = aws_api_gateway_domain_name.hand_history.regional_domain_name
 }

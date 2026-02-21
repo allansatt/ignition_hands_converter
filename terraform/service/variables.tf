@@ -17,9 +17,21 @@ variable "cognito_region" {
 }
 
 variable "api_domain" {
-  description = "Custom domain for the API (e.g. api.allansattelbergrivera.com); used for API Gateway custom domain and base path mapping"
+  description = "Legacy: main API domain (e.g. api.allansattelbergrivera.com); hand-history API uses hand_history_api_domain instead"
   type        = string
   default     = "api.allansattelbergrivera.com"
+}
+
+variable "hand_history_api_domain" {
+  description = "Custom domain for the hand-history API (e.g. hand-history.allansattelbergrivera.com; use cert *.allansattelbergrivera.com)"
+  type        = string
+  default     = "hand-history.allansattelbergrivera.com"
+}
+
+variable "hand_history_domain_cert" {
+  description = "ACM certificate domain for hand_history_api_domain (e.g. *.allansattelbergrivera.com)"
+  type        = string
+  default     = "*.allansattelbergrivera.com"
 }
 
 variable "transcode_dlq_max_receive_count" {

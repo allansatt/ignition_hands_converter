@@ -4,7 +4,7 @@
 resource "null_resource" "build_transcode_lambda" {
   triggers = {
     handler  = filemd5("${path.module}/lambda/transcode/handler.py")
-    convert  = filemd5("${path.module}/../src/convert.py")
+    convert  = filemd5("${path.module}/../../src/convert.py")
     build_sh = filemd5("${path.module}/lambda/transcode/build.sh")
   }
 

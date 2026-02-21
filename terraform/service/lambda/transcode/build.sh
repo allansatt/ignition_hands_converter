@@ -5,7 +5,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # From terraform/lambda/transcode, repo root is three levels up
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build_pkg"
 ZIP_PATH="$SCRIPT_DIR/deployment.zip"
 
