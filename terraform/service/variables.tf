@@ -34,6 +34,12 @@ variable "hand_history_domain_cert" {
   default     = "*.allansattelbergrivera.com"
 }
 
+variable "hosted_zone_name" {
+  description = "Route53 hosted zone name (e.g. allansattelbergrivera.com)"
+  type        = string
+  default     = "allansattelbergrivera.com"
+}
+
 variable "transcode_dlq_max_receive_count" {
   description = "Max receive count for the transcode queue before messages are sent to the DLQ"
   type        = number

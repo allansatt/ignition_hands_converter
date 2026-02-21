@@ -221,3 +221,23 @@ resource "aws_api_gateway_base_path_mapping" "hand_history" {
   stage_name  = aws_api_gateway_stage.hand_history.stage_name
   domain_name = aws_api_gateway_domain_name.hand_history.domain_name
 }
+
+# ---------------------------------------------------------------------------
+# Route53 A-alias record: hand-history.allansattelbergrivera.com → API GW
+# ---------------------------------------------------------------------------
+
+data "aws_route53_zone" "main" {
+  name = var.hosted_zone_name
+}
+
+resource "aws_route53_record" "hand_history" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = var.hand_history_api_domain
+  type    = "A"
+
+  alias {
+    name                   = aws_api_gateway_domain_name.hand_history.regional_domain_name
+    zone_id                = aws_api_gateway_domain_name.hand_history.regional_zone_id
+    evaluate_target_health = false
+  }
+}
