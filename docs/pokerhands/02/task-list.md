@@ -16,16 +16,16 @@
 
 ### Infrastructure (Terraform)
 
-- [ ] Use Terraform to provision the S3 bucket "pokerhands" with encryption and block public access; define prefix layout `users/{userId}/uploads/{requestId}/{originalName}` and `users/{userId}/transcoded/{requestId}/{outputName}`.
-- [ ] Use Terraform to provision the DynamoDB table for job/file metadata with partition key `userId`, sort key `jobId`; add a GSI with partition key `userId` and sort key `createdAt` (number, e.g. epoch milliseconds) so the list API can query by user and return jobs **newest first** (query the GSI with `ScanIndexForward = false`).
-- [ ] Define Terraform variables for Cognito User Pool ID (and issuer/region if needed) and for the API domain (`api.allansattelbergrivera.com`) so the authorizer and custom domain use the correct values at deploy time.
-- [ ] Use Terraform to create IAM roles and policies for Lambda: S3 read/write for the pokerhands bucket, DynamoDB read/write for the jobs table, SQS receive message and delete message for the transcode queue (for the transcode Lambda), and least-privilege for each API Lambda. Grant EventBridge permission to send messages to the transcode SQS queue.
-- [ ] Use Terraform to create an SQS queue for transcode jobs and a DLQ (dead-letter queue); set the main queue’s redrive policy so messages that fail after a configured max receive count are sent to the DLQ for retry handling and inspection.
-- [ ] Use Terraform to configure EventBridge to receive S3 object-created events for the pokerhands bucket (uploads prefix), add an EventBridge rule that targets the transcode SQS queue, and ensure the transcode Lambda is triggered by the SQS queue (Lambda event source mapping) instead of S3 directly—so failed Lambda invocations are retried via SQS and eventually moved to the DLQ.
-- [ ] Use Terraform to define the transcode Lambda (Python), package or layer the code from this repo (e.g. `src/convert.py` and `open_hh_models` dependency), and attach the Lambda’s event source to the transcode SQS queue (EventBridge → SQS → Lambda).
-- [ ] Use Terraform to define API Gateway REST API with routes under `/hand-history`: (1) request presigned upload URL, (2) list user's transcoded files, (3) request presigned download URL; wire each route to its Lambda and attach the Cognito authorizer using the supplied User Pool ID.
-  - [ ] Configure the Cognito authorizer so unauthenticated or invalid-token requests receive 401 (no presigned URLs or file listings).
-- [ ] Configure API Gateway custom domain so the API is served at `https://api.allansattelbergrivera.com`: reference the **existing** ACM certificate for `api.allansattelbergrivera.com` using a Terraform **data source** (e.g. `aws_acm_certificate` by domain or ARN), then create the API Gateway domain name and base path mapping using that certificate; document that `api.allansattelbergrivera.com` (DNS CNAME or A/ALIAS) points to the API Gateway endpoint.
+- [x] Use Terraform to provision the S3 bucket "pokerhands" with encryption and block public access; define prefix layout `users/{userId}/uploads/{requestId}/{originalName}` and `users/{userId}/transcoded/{requestId}/{outputName}`.
+- [x] Use Terraform to provision the DynamoDB table for job/file metadata with partition key `userId`, sort key `jobId`; add a GSI with partition key `jobId` only.
+- [x] Define Terraform variables for Cognito User Pool ID (and issuer/region if needed) and for the API domain (`api.allansattelbergrivera.com`) so the authorizer and custom domain use the correct values at deploy time.
+- [x] Use Terraform to create IAM roles and policies for Lambda: S3 read/write for the pokerhands bucket, DynamoDB read/write for the jobs table, SQS receive message and delete message for the transcode queue (for the transcode Lambda), and least-privilege for each API Lambda. Grant EventBridge permission to send messages to the transcode SQS queue.
+- [x] Use Terraform to create an SQS queue for transcode jobs and a DLQ (dead-letter queue); set the main queue’s redrive policy so messages that fail after a configured max receive count are sent to the DLQ for retry handling and inspection.
+- [x] Use Terraform to configure EventBridge to receive S3 object-created events for the pokerhands bucket (uploads prefix), add an EventBridge rule that targets the transcode SQS queue, and ensure the transcode Lambda is triggered by the SQS queue (Lambda event source mapping) instead of S3 directly—so failed Lambda invocations are retried via SQS and eventually moved to the DLQ.
+- [x] Use Terraform to define the transcode Lambda (Python), package or layer the code from this repo (e.g. `src/convert.py` and `open_hh_models` dependency), and attach the Lambda’s event source to the transcode SQS queue (EventBridge → SQS → Lambda).
+- [x] Use Terraform to define API Gateway REST API with routes under `/hand-history`: (1) request presigned upload URL, (2) list user's transcoded files, (3) request presigned download URL; wire each route to its Lambda and attach the Cognito authorizer using the supplied User Pool ID.
+  - [x] Configure the Cognito authorizer so unauthenticated or invalid-token requests receive 401 (no presigned URLs or file listings).
+- [x] Configure API Gateway custom domain so the API is served at `https://api.allansattelbergrivera.com`: reference the **existing** ACM certificate for `api.allansattelbergrivera.com` using a Terraform **data source** (e.g. `aws_acm_certificate` by domain or ARN), then create the API Gateway domain name and base path mapping using that certificate; document that `api.allansattelbergrivera.com` (DNS CNAME or A/ALIAS) points to the API Gateway endpoint.
 
 ### API and upload flow
 
@@ -36,11 +36,11 @@
 ### Transcoding
 
 - [ ] Implement the transcode Lambda: on SQS message (payload is EventBridge event for S3 object-created), read the object key from the event detail, parse `userId` and `requestId` from the key (e.g. `users/{userId}/uploads/{requestId}/...`), load the object body from S3, run `convert_ignition_to_open_hh(io.StringIO(body))` from `src.convert` (or equivalent file-like input), serialize the returned hands to the open hand history format (e.g. JSON via Pydantic `model_dump_json()`), write the output to `users/{userId}/transcoded/{requestId}/{outputName}` in S3, then update the DynamoDB item for `userId` + `jobId` with transcoded key and status `completed` (or `failed` and optional error message on exception). On success, delete the message from the queue; on failure, let it retry (and eventually move to the DLQ after max receives).
-  - [ ] Package this repo's `src` and dependencies (e.g. `ohh-pydantic`, `pydantic`) into the Lambda deployment package or a layer so the Lambda can import `src.convert`.
+  - [x] Package this repo's `src` and dependencies (e.g. `ohh-pydantic`, `pydantic`) into the Lambda deployment package or a layer so the Lambda can import `src.convert`.
 
 ### List and download
 
-- [ ] Implement the "list my files" Lambda: query the `userId` + `createdAt` GSI by `userId` (from JWT) with `ScanIndexForward = false` so results are **newest first**; return display name (original filename), job id, status, created date for each item; support pagination (e.g. `limit` and `lastEvaluatedKey` / `nextToken`).
+- [ ] Implement the "list my files" Lambda: query the base table by `userId` (from JWT), sort by `createdAt` in application so results are **newest first**; return display name (original filename), job id, status, created date for each item; support pagination (e.g. `limit` and `lastEvaluatedKey` / `nextToken`).
 - [ ] Implement the presigned download URL Lambda: accept job id (path or query), get `userId` from JWT, get DynamoDB item by `userId` and `jobId`, verify the item exists and belongs to the user, read `transcodedKey` from the item, generate a time-limited presigned GET URL for that S3 key, and return it.
 
 ### Downloads page (frontend)

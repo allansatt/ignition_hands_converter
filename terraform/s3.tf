@@ -31,3 +31,10 @@ resource "aws_s3_bucket_public_access_block" "pokerhands" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
+
+# Send S3 object events to EventBridge so we can route uploads to the transcode SQS queue.
+resource "aws_s3_bucket_notification" "pokerhands_eventbridge" {
+  bucket = aws_s3_bucket.pokerhands.id
+
+  eventbridge = true
+}
