@@ -197,36 +197,16 @@ resource "aws_api_gateway_stage" "hand_history" {
 }
 
 # ---------------------------------------------------------------------------
-# Custom domain: https://api.allansattelbergrivera.com
-# Reference existing ACM certificate via data source (or var.api_domain_acm_certificate_arn).
-# DNS: Point api.allansattelbergrivera.com (CNAME or A/ALIAS) to the API Gateway regional domain (see output).
+# Custom domain: reuse existing API Gateway domain name (e.g. api.allansattelbergrivera.com).
+# Base path mapping attaches this API to that domain.
 # ---------------------------------------------------------------------------
 
-data "aws_acm_certificate" "api_domain" {
-  count       = var.api_domain_acm_certificate_arn == null ? 1 : 0
-  domain      = var.api_domain
-  most_recent = true
-  statuses    = ["ISSUED"]
-}
-
-locals {
-  api_domain_cert_arn = coalesce(var.api_domain_acm_certificate_arn, try(data.aws_acm_certificate.api_domain[0].arn, null))
-}
-
-resource "aws_api_gateway_domain_name" "hand_history" {
-  count = local.api_domain_cert_arn != null ? 1 : 0
-
-  domain_name              = var.api_domain
-  regional_certificate_arn  = local.api_domain_cert_arn
-  endpoint_configuration {
-    types = ["REGIONAL"]
-  }
+data "aws_api_gateway_domain_name" "hand_history" {
+  domain_name = var.api_domain
 }
 
 resource "aws_api_gateway_base_path_mapping" "hand_history" {
-  count = local.api_domain_cert_arn != null ? 1 : 0
-
   api_id      = aws_api_gateway_rest_api.hand_history.id
   stage_name  = aws_api_gateway_stage.hand_history.stage_name
-  domain_name = aws_api_gateway_domain_name.hand_history[0].domain_name
+  domain_name = data.aws_api_gateway_domain_name.hand_history.domain_name
 }
