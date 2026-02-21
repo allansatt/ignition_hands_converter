@@ -18,6 +18,13 @@ resource "aws_lambda_function" "upload_url" {
   handler          = "api_handlers.upload_handler"
   source_code_hash = data.archive_file.api_handlers.output_base64sha256
   runtime          = "python3.12"
+
+  environment {
+    variables = {
+      POKERHANDS_BUCKET     = aws_s3_bucket.pokerhands.id
+      POKERHANDS_JOBS_TABLE = aws_dynamodb_table.pokerhands_jobs.name
+    }
+  }
 }
 
 resource "aws_lambda_function" "list_files" {
