@@ -1,6 +1,3 @@
-# S3 bucket for Terraform remote state (no lock table; state and history in S3 only).
-# Apply this once (with local state), then point terraform/service at this bucket.
-
 resource "aws_s3_bucket" "tfstate" {
   bucket = var.state_bucket_name
 }

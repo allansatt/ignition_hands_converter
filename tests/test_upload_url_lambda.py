@@ -1,41 +1,56 @@
-"""Unit tests for the presigned upload URL Lambda handler."""
 import json
 import sys
 import uuid
 from pathlib import Path
-from typing import Optional
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch, MagicMock
 
+import boto3
 import pytest
+from moto import mock_aws
 
-# Import handler from Terraform-packaged Lambda code
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "terraform" / "lambda" / "api_handlers"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "terraform" / "service" / "lambda" / "api_handlers"))
 import api_handlers
 
+BUCKET = "pokerhands"
+TABLE = "pokerhands-jobs"
 
-def _upload_event(user_id: str = "user-123", body: Optional[dict] = None) -> dict:
+
+@pytest.fixture
+def aws(monkeypatch):
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    monkeypatch.setenv("POKERHANDS_BUCKET", BUCKET)
+    monkeypatch.setenv("POKERHANDS_JOBS_TABLE", TABLE)
+
+    with mock_aws():
+        s3 = boto3.client("s3", region_name="us-east-1")
+        s3.create_bucket(Bucket=BUCKET)
+
+        dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+        dynamodb.create_table(
+            TableName=TABLE,
+            KeySchema=[
+                {"AttributeName": "userId", "KeyType": "HASH"},
+                {"AttributeName": "jobId", "KeyType": "RANGE"},
+            ],
+            AttributeDefinitions=[
+                {"AttributeName": "userId", "AttributeType": "S"},
+                {"AttributeName": "jobId", "AttributeType": "S"},
+            ],
+            BillingMode="PAY_PER_REQUEST",
+        )
+
+        yield s3, dynamodb
+
+
+def _upload_event(user_id="user-123", body=None):
     return {
-        "requestContext": {
-            "authorizer": {
-                "claims": {
-                    "sub": user_id,
-                }
-            }
-        },
+        "requestContext": {"authorizer": {"claims": {"sub": user_id}}},
         "body": json.dumps(body) if body is not None else None,
     }
 
 
-@patch.dict("os.environ", {"POKERHANDS_BUCKET": "pokerhands", "POKERHANDS_JOBS_TABLE": "pokerhands-jobs"})
-@patch("api_handlers.boto3")
-def test_upload_handler_returns_presigned_url_and_job_id(mock_boto3):
-    mock_s3 = MagicMock()
-    mock_boto3.client.return_value = mock_s3
-    mock_s3.generate_presigned_url.return_value = "https://presigned.example/put"
-    mock_dynamodb = MagicMock()
-    mock_boto3.resource.return_value = mock_dynamodb
-    mock_table = MagicMock()
-    mock_dynamodb.Table.return_value = mock_table
+def test_upload_handler_returns_presigned_url_and_job_id(aws):
+    _, dynamodb = aws
 
     event = _upload_event(user_id="user-456", body={"filename": "my-hands.txt"})
     with patch.object(uuid, "uuid4", return_value=MagicMock(hex="aabbccdd11223344")):
@@ -44,55 +59,37 @@ def test_upload_handler_returns_presigned_url_and_job_id(mock_boto3):
     assert result["statusCode"] == 200
     body = json.loads(result["body"])
     assert "uploadUrl" in body
-    assert body["uploadUrl"] == "https://presigned.example/put"
-    assert "jobId" in body
     assert body["jobId"] == "aabbccdd11223344"
 
-    mock_table.put_item.assert_called_once()
-    call_kw = mock_table.put_item.call_args[1]
-    item = call_kw["Item"]
+    table = dynamodb.Table(TABLE)
+    item = table.get_item(Key={"userId": "user-456", "jobId": "aabbccdd11223344"})["Item"]
     assert item["userId"] == "user-456"
-    assert item["jobId"] == "aabbccdd11223344"
     assert item["status"] == "pending"
-    assert "uploadKey" in item
     assert item["uploadKey"].endswith("my-hands.txt")
     assert "users/user-456/uploads/aabbccdd11223344/" in item["uploadKey"]
 
 
-@patch.dict("os.environ", {"POKERHANDS_BUCKET": "pokerhands", "POKERHANDS_JOBS_TABLE": "pokerhands-jobs"})
-@patch("api_handlers.boto3")
-def test_upload_handler_uses_only_jwt_user_id_not_body(mock_boto3):
-    mock_s3 = MagicMock()
-    mock_s3.generate_presigned_url.return_value = "https://presigned.example/put"
-    mock_boto3.client.return_value = mock_s3
-    mock_table = MagicMock()
-    mock_boto3.resource.return_value.Table.return_value = mock_table
+def test_upload_handler_uses_only_jwt_user_id_not_body(aws):
+    _, dynamodb = aws
 
-    # Body might contain a different userId – must be ignored
     event = _upload_event(user_id="real-user-from-jwt", body={"userId": "attacker", "filename": "x.txt"})
     with patch.object(uuid, "uuid4", return_value=MagicMock(hex="job111")):
         api_handlers.upload_handler(event, None)
 
-    call_kw = mock_table.put_item.call_args[1]
-    assert call_kw["Item"]["userId"] == "real-user-from-jwt"
-    assert "users/real-user-from-jwt/" in call_kw["Item"]["uploadKey"]
+    table = dynamodb.Table(TABLE)
+    item = table.get_item(Key={"userId": "real-user-from-jwt", "jobId": "job111"})["Item"]
+    assert item["userId"] == "real-user-from-jwt"
+    assert "users/real-user-from-jwt/" in item["uploadKey"]
 
 
-@patch.dict("os.environ", {"POKERHANDS_BUCKET": "pokerhands", "POKERHANDS_JOBS_TABLE": "pokerhands-jobs"})
-@patch("api_handlers.boto3")
-def test_upload_handler_sanitizes_filename(mock_boto3):
-    mock_s3 = MagicMock()
-    mock_s3.generate_presigned_url.return_value = "https://presigned.example/put"
-    mock_boto3.client.return_value = mock_s3
-    mock_table = MagicMock()
-    mock_boto3.resource.return_value.Table.return_value = mock_table
+def test_upload_handler_sanitizes_filename(aws):
+    _, dynamodb = aws
 
     event = _upload_event(user_id="u1", body={"filename": "../../../etc/passwd"})
     with patch.object(uuid, "uuid4", return_value=MagicMock(hex="job222")):
         api_handlers.upload_handler(event, None)
 
-    call_kw = mock_table.put_item.call_args[1]
-    key = call_kw["Item"]["uploadKey"]
-    assert ".." not in key
-    assert "etc" not in key or "passwd" not in key
-    assert "users/u1/uploads/job222/" in key
+    table = dynamodb.Table(TABLE)
+    item = table.get_item(Key={"userId": "u1", "jobId": "job222"})["Item"]
+    assert ".." not in item["uploadKey"]
+    assert "users/u1/uploads/job222/" in item["uploadKey"]

@@ -1,10 +1,3 @@
-# API Gateway REST API: /upload-url, /files, /download (no /hand-history prefix). Cognito authorizer.
-# Unauthenticated or invalid tokens receive 401 (Cognito authorizer default).
-
-# ---------------------------------------------------------------------------
-# Stub Lambdas for the three endpoints (implementation in later tasks)
-# ---------------------------------------------------------------------------
-
 data "archive_file" "api_handlers" {
   type        = "zip"
   source_dir  = "${path.module}/lambda/api_handlers"
@@ -45,10 +38,6 @@ resource "aws_lambda_function" "download_url" {
   runtime          = "python3.12"
 }
 
-# ---------------------------------------------------------------------------
-# REST API (paths at root: /upload-url, /files, /download)
-# ---------------------------------------------------------------------------
-
 resource "aws_api_gateway_rest_api" "hand_history" {
   name        = "pokerhands-hand-history"
   description = "Hand history upload, list, and download API"
@@ -58,7 +47,6 @@ resource "aws_api_gateway_rest_api" "hand_history" {
   }
 }
 
-# Cognito authorizer: invalid or missing token → 401
 resource "aws_api_gateway_authorizer" "cognito" {
   rest_api_id          = aws_api_gateway_rest_api.hand_history.id
   name                 = "cognito-authorizer"
@@ -72,10 +60,6 @@ locals {
 }
 
 data "aws_caller_identity" "current" {}
-
-# ---------------------------------------------------------------------------
-# POST /upload-url
-# ---------------------------------------------------------------------------
 
 resource "aws_api_gateway_resource" "upload_url" {
   rest_api_id = aws_api_gateway_rest_api.hand_history.id
@@ -108,10 +92,6 @@ resource "aws_lambda_permission" "upload_url" {
   source_arn    = "${aws_api_gateway_rest_api.hand_history.execution_arn}/*/*"
 }
 
-# ---------------------------------------------------------------------------
-# GET /files
-# ---------------------------------------------------------------------------
-
 resource "aws_api_gateway_resource" "files" {
   rest_api_id = aws_api_gateway_rest_api.hand_history.id
   parent_id   = aws_api_gateway_rest_api.hand_history.root_resource_id
@@ -142,10 +122,6 @@ resource "aws_lambda_permission" "list_files" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.hand_history.execution_arn}/*/*"
 }
-
-# ---------------------------------------------------------------------------
-# GET /download (query: jobId)
-# ---------------------------------------------------------------------------
 
 resource "aws_api_gateway_resource" "download" {
   rest_api_id = aws_api_gateway_rest_api.hand_history.id
@@ -178,10 +154,6 @@ resource "aws_lambda_permission" "download" {
   source_arn    = "${aws_api_gateway_rest_api.hand_history.execution_arn}/*/*"
 }
 
-# ---------------------------------------------------------------------------
-# Deployment (stage)
-# ---------------------------------------------------------------------------
-
 resource "aws_api_gateway_deployment" "hand_history" {
   rest_api_id = aws_api_gateway_rest_api.hand_history.id
   depends_on = [
@@ -196,11 +168,6 @@ resource "aws_api_gateway_stage" "hand_history" {
   rest_api_id   = aws_api_gateway_rest_api.hand_history.id
   stage_name    = "prod"
 }
-
-# ---------------------------------------------------------------------------
-# Custom domain: hand_history_api_domain (e.g. hand-history.api...) with ACM cert hand_history_domain_cert.
-# Base path mapping at root so URLs are https://<domain>/upload-url, /files, /download.
-# ---------------------------------------------------------------------------
 
 data "aws_acm_certificate" "hand_history_domain" {
   domain      = var.hand_history_domain_cert
@@ -221,10 +188,6 @@ resource "aws_api_gateway_base_path_mapping" "hand_history" {
   stage_name  = aws_api_gateway_stage.hand_history.stage_name
   domain_name = aws_api_gateway_domain_name.hand_history.domain_name
 }
-
-# ---------------------------------------------------------------------------
-# Route53 A-alias record: hand-history.allansattelbergrivera.com → API GW
-# ---------------------------------------------------------------------------
 
 data "aws_route53_zone" "main" {
   name = var.hosted_zone_name

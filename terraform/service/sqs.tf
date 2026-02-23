@@ -1,7 +1,3 @@
-# SQS queue for transcode jobs; EventBridge will send S3 object-created events here,
-# and the transcode Lambda is triggered via event source mapping (see EventBridge + Lambda tasks).
-# DLQ holds messages that fail after max receive count for retry handling and inspection.
-
 resource "aws_sqs_queue" "transcode_dlq" {
   name = "pokerhands-transcode-dlq"
 }

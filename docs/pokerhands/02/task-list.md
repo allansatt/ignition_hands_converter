@@ -29,20 +29,16 @@
 
 ### API and upload flow
 
-- [ ] Implement the presigned upload URL Lambda: validate Cognito JWT and extract `userId` (sub), generate a unique `requestId` (e.g. UUID), build S3 key `users/{userId}/uploads/{requestId}/{originalFilename}` (sanitize filename), write DynamoDB item with `userId`, `jobId` (= requestId), upload key, status `pending`, and `createdAt`, return presigned PUT URL and job id.
-  - [ ] Use only the authenticated user's `userId` from the JWT for S3 key and DynamoDB; do not accept userId from the request body.
-- [ ] Enforce that only the owning user can list or download their own files: in list and download handlers, use only `userId` from the Cognito JWT for DynamoDB queries and presigned URL generation; do not allow access by job id alone without verifying item ownership.
+- [x] Implement the presigned upload URL Lambda: validate Cognito JWT and extract `userId` (sub), generate a unique `requestId` (e.g. UUID), build S3 key `users/{userId}/uploads/{requestId}/{originalFilename}` (sanitize filename), write DynamoDB item with `userId`, `jobId` (= requestId), upload key, status `pending`, and `createdAt`, return presigned PUT URL and job id.
+  - [x] Use only the authenticated user's `userId` from the JWT for S3 key and DynamoDB; do not accept userId from the request body.
+- [x] Enforce that only the owning user can list or download their own files: in list and download handlers, use only `userId` from the Cognito JWT for DynamoDB queries and presigned URL generation; do not allow access by job id alone without verifying item ownership.
 
 ### Transcoding
 
-- [ ] Implement the transcode Lambda: on SQS message (payload is EventBridge event for S3 object-created), read the object key from the event detail, parse `userId` and `requestId` from the key (e.g. `users/{userId}/uploads/{requestId}/...`), load the object body from S3, run `convert_ignition_to_open_hh(io.StringIO(body))` from `src.convert` (or equivalent file-like input), serialize the returned hands to the open hand history format (e.g. JSON via Pydantic `model_dump_json()`), write the output to `users/{userId}/transcoded/{requestId}/{outputName}` in S3, then update the DynamoDB item for `userId` + `jobId` with transcoded key and status `completed` (or `failed` and optional error message on exception). On success, delete the message from the queue; on failure, let it retry (and eventually move to the DLQ after max receives).
+- [x] Implement the transcode Lambda: on SQS message (payload is EventBridge event for S3 object-created), read the object key from the event detail, parse `userId` and `requestId` from the key (e.g. `users/{userId}/uploads/{requestId}/...`), load the object body from S3, run `convert_ignition_to_open_hh(io.StringIO(body))` from `src.convert` (or equivalent file-like input), serialize the returned hands to the open hand history format (e.g. JSON via Pydantic `model_dump_json()`), write the output to `users/{userId}/transcoded/{requestId}/{outputName}` in S3, then update the DynamoDB item for `userId` + `jobId` with transcoded key and status `completed` (or `failed` and optional error message on exception). On success, delete the message from the queue; on failure, let it retry (and eventually move to the DLQ after max receives).
   - [x] Package this repo's `src` and dependencies (e.g. `ohh-pydantic`, `pydantic`) into the Lambda deployment package or a layer so the Lambda can import `src.convert`.
 
 ### List and download
 
-- [ ] Implement the "list my files" Lambda: query the base table by `userId` (from JWT), sort by `createdAt` in application so results are **newest first**; return display name (original filename), job id, status, created date for each item; support pagination (e.g. `limit` and `lastEvaluatedKey` / `nextToken`).
-- [ ] Implement the presigned download URL Lambda: accept job id (path or query), get `userId` from JWT, get DynamoDB item by `userId` and `jobId`, verify the item exists and belongs to the user, read `transcodedKey` from the item, generate a time-limited presigned GET URL for that S3 key, and return it.
-
-### Downloads page (frontend)
-
-- [ ] Build a downloads page (e.g. in an existing frontend or a minimal static site): call the list endpoint at `https://api.allansattelbergrivera.com/.../hand-history` (or the deployed path) with the user's auth token, render the list of transcoded files (display name, job id, status, created date), and for each row provide a control that requests a presigned download URL and opens or downloads the file.
+- [x] Implement the "list my files" Lambda: query the base table by `userId` (from JWT), sort by `createdAt` in application so results are **newest first**; return display name (original filename), job id, status, created date for each item; support pagination (e.g. `limit` and `lastEvaluatedKey` / `nextToken`).
+- [x] Implement the presigned download URL Lambda: accept job id (path or query), get `userId` from JWT, get DynamoDB item by `userId` and `jobId`, verify the item exists and belongs to the user, read `transcodedKey` from the item, generate a time-limited presigned GET URL for that S3 key, and return it.

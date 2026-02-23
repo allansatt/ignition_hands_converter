@@ -1,10 +1,3 @@
-# DynamoDB table for job/file metadata.
-#
-# Used by: upload URL Lambda (write pending job), transcode Lambda (update with
-# transcoded key and status), list API (query base table by userId; sort by createdAt in app),
-# download URL Lambda (lookup transcoded key by userId + jobId).
-# GSI jobId-index: partition key jobId only (lookups by job id).
-
 resource "aws_dynamodb_table" "pokerhands_jobs" {
   name         = "pokerhands-jobs"
   billing_mode = "PAY_PER_REQUEST"

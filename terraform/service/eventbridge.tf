@@ -1,6 +1,3 @@
-# EventBridge rule: S3 object-created (uploads prefix) → transcode SQS queue.
-# The transcode Lambda is triggered by the SQS queue via event source mapping (see lambda transcode task).
-
 resource "aws_cloudwatch_event_rule" "s3_upload_to_transcode" {
   name        = "pokerhands-s3-upload-to-transcode"
   description = "Route S3 object-created events (uploads prefix) to transcode SQS queue"

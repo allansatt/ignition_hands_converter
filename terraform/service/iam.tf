@@ -1,12 +1,3 @@
-# IAM roles and policies for Lambdas and EventBridge.
-# - Transcode Lambda: S3 read/write pokerhands, DynamoDB read/write jobs table, SQS receive/delete for transcode queue.
-# - API Lambdas: least-privilege per handler (upload URL, list, download).
-# - EventBridge → SQS: queue policy below (enable by setting transcode_queue_url and eventbridge_transcode_rule_arn when queue and rule exist).
-
-# ---------------------------------------------------------------------------
-# Transcode Lambda
-# ---------------------------------------------------------------------------
-
 resource "aws_iam_role" "lambda_transcode" {
   name = "pokerhands-lambda-transcode"
 
@@ -84,10 +75,6 @@ resource "aws_iam_role_policy" "lambda_transcode" {
   })
 }
 
-# ---------------------------------------------------------------------------
-# Upload URL Lambda (presigned PUT + DynamoDB write)
-# ---------------------------------------------------------------------------
-
 resource "aws_iam_role" "lambda_upload_url" {
   name = "pokerhands-lambda-upload-url"
 
@@ -141,10 +128,6 @@ resource "aws_iam_role_policy" "lambda_upload_url" {
   })
 }
 
-# ---------------------------------------------------------------------------
-# List files Lambda (DynamoDB query by userId)
-# ---------------------------------------------------------------------------
-
 resource "aws_iam_role" "lambda_list" {
   name = "pokerhands-lambda-list"
 
@@ -195,10 +178,6 @@ resource "aws_iam_role_policy" "lambda_list" {
   })
 }
 
-# ---------------------------------------------------------------------------
-# Download URL Lambda (DynamoDB get + S3 presigned GET)
-# ---------------------------------------------------------------------------
-
 resource "aws_iam_role" "lambda_download_url" {
   name = "pokerhands-lambda-download-url"
 
@@ -248,11 +227,6 @@ resource "aws_iam_role_policy" "lambda_download_url" {
     ]
   })
 }
-
-# ---------------------------------------------------------------------------
-# EventBridge → transcode SQS queue (allow rule to send messages)
-# Uses the EventBridge rule from eventbridge.tf so the rule can send to this queue.
-# ---------------------------------------------------------------------------
 
 resource "aws_sqs_queue_policy" "allow_eventbridge_transcode" {
   queue_url = aws_sqs_queue.transcode_queue.url

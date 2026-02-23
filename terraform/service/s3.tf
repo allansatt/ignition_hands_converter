@@ -1,9 +1,3 @@
-# S3 bucket "pokerhands" for hand history uploads and transcoded outputs.
-#
-# Key layout (object key prefix convention; no physical folders are created):
-#   - Uploads:  users/{userId}/uploads/{requestId}/{originalName}
-#   - Outputs:  users/{userId}/transcoded/{requestId}/{outputName}
-
 resource "aws_s3_bucket" "pokerhands" {
   bucket = "allansattelbergrivera-pokerhands"
 }
@@ -28,7 +22,6 @@ resource "aws_s3_bucket_public_access_block" "pokerhands" {
   restrict_public_buckets = true
 }
 
-# Send S3 object events to EventBridge so we can route uploads to the transcode SQS queue.
 resource "aws_s3_bucket_notification" "pokerhands_eventbridge" {
   bucket = aws_s3_bucket.pokerhands.id
 

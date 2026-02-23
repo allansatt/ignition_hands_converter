@@ -1,6 +1,3 @@
-# Transcode Lambda: triggered by SQS (EventBridge forwards S3 object-created for uploads).
-# Package: build script zips src + ohh-pydantic/pydantic; handler is a stub until "Implement the transcode Lambda" task.
-
 resource "null_resource" "build_transcode_lambda" {
   triggers = {
     handler  = filemd5("${path.module}/lambda/transcode/handler.py")
@@ -14,7 +11,6 @@ resource "null_resource" "build_transcode_lambda" {
   }
 }
 
-# Run `bash terraform/lambda/transcode/build.sh` from repo root before first apply so deployment.zip exists.
 resource "aws_lambda_function" "transcode" {
   filename         = "${path.module}/lambda/transcode/deployment.zip"
   function_name    = "pokerhands-transcode"
