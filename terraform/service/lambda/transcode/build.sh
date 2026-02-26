@@ -12,7 +12,16 @@ ZIP_PATH="$SCRIPT_DIR/deployment.zip"
 rm -rf "$BUILD_DIR" "$ZIP_PATH"
 mkdir -p "$BUILD_DIR"
 
-python3 -m pip install -q -t "$BUILD_DIR" "ohh-pydantic>=0.1.0" "pydantic>=2.11.7"
+# Install for Lambda (Linux x86_64); otherwise pydantic_core native extension fails at runtime.
+if command -v uv &>/dev/null; then
+  uv pip install -q --target "$BUILD_DIR" \
+    --python-platform x86_64-unknown-linux-gnu --python-version 3.12 \
+    "ohh-pydantic>=0.1.0" "pydantic>=2.11.7"
+else
+  python3 -m pip install -q -t "$BUILD_DIR" \
+    --platform manylinux2014_x86_64 --implementation cp --python-version 3.12 --only-binary=:all: \
+    "ohh-pydantic>=0.1.0" "pydantic>=2.11.7"
+fi
 cp -r "$REPO_ROOT/src" "$BUILD_DIR/"
 cp "$SCRIPT_DIR/handler.py" "$BUILD_DIR/"
 

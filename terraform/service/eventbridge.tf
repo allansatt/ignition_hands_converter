@@ -10,7 +10,7 @@ resource "aws_cloudwatch_event_rule" "s3_upload_to_transcode" {
         name = [aws_s3_bucket.pokerhands.id]
       }
       object = {
-        key = [{ prefix = "users/" }]
+        key = [{ prefix = "users/" }, { prefix = "users/" }]
       }
     }
   })

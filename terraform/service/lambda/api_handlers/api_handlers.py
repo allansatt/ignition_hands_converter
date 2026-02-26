@@ -137,8 +137,14 @@ def download_handler(event, context):
         return _resp(400, {"error": "Missing jobId query parameter"})
 
     table = boto3.resource("dynamodb").Table(table_name)
-    result = table.get_item(Key={"userId": user_id, "jobId": job_id})
-    item = result.get("Item")
+    # Table primary key is (userId, createdAt); look up by jobId via GSI
+    result = table.query(
+        IndexName="jobId-index",
+        KeyConditionExpression="jobId = :jid",
+        ExpressionAttributeValues={":jid": job_id},
+    )
+    items = result.get("Items", [])
+    item = next((i for i in items if i.get("userId") == user_id), None)
     if not item:
         return _resp(404, {"error": "Job not found"})
 

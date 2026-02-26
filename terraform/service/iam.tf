@@ -209,10 +209,13 @@ resource "aws_iam_role_policy" "lambda_download_url" {
         Resource = "${aws_s3_bucket.pokerhands.arn}/*"
       },
       {
-        Sid    = "DynamoDBGet"
+        Sid    = "DynamoDBGetAndQuery"
         Effect = "Allow"
-        Action = ["dynamodb:GetItem"]
-        Resource = aws_dynamodb_table.pokerhands_jobs.arn
+        Action = ["dynamodb:GetItem", "dynamodb:Query"]
+        Resource = [
+          aws_dynamodb_table.pokerhands_jobs.arn,
+          "${aws_dynamodb_table.pokerhands_jobs.arn}/index/*"
+        ]
       },
       {
         Sid    = "LambdaBasic"

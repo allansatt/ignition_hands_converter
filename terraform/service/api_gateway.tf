@@ -11,6 +11,7 @@ resource "aws_lambda_function" "upload_url" {
   handler          = "api_handlers.upload_handler"
   source_code_hash = data.archive_file.api_handlers.output_base64sha256
   runtime          = "python3.12"
+  timeout          = 10
 
   environment {
     variables = {
@@ -27,6 +28,14 @@ resource "aws_lambda_function" "list_files" {
   handler          = "api_handlers.list_handler"
   source_code_hash = data.archive_file.api_handlers.output_base64sha256
   runtime          = "python3.12"
+  timeout          = 10
+
+  environment {
+    variables = {
+      POKERHANDS_BUCKET     = aws_s3_bucket.pokerhands.id
+      POKERHANDS_JOBS_TABLE = aws_dynamodb_table.pokerhands_jobs.name
+    }
+  }
 }
 
 resource "aws_lambda_function" "download_url" {
@@ -36,6 +45,14 @@ resource "aws_lambda_function" "download_url" {
   handler          = "api_handlers.download_handler"
   source_code_hash = data.archive_file.api_handlers.output_base64sha256
   runtime          = "python3.12"
+  timeout          = 10
+
+  environment {
+    variables = {
+      POKERHANDS_BUCKET     = aws_s3_bucket.pokerhands.id
+      POKERHANDS_JOBS_TABLE = aws_dynamodb_table.pokerhands_jobs.name
+    }
+  }
 }
 
 resource "aws_api_gateway_rest_api" "hand_history" {
@@ -48,10 +65,12 @@ resource "aws_api_gateway_rest_api" "hand_history" {
 }
 
 resource "aws_api_gateway_authorizer" "cognito" {
-  rest_api_id          = aws_api_gateway_rest_api.hand_history.id
-  name                 = "cognito-authorizer"
-  type                 = "COGNITO_USER_POOLS"
-  provider_arns        = [local.cognito_user_pool_arn]
+  rest_api_id   = aws_api_gateway_rest_api.hand_history.id
+  name          = "cognito-authorizer"
+  type          = "COGNITO_USER_POOLS"
+  provider_arns = [local.cognito_user_pool_arn]
+  # Explicit token source; required for Bearer token in Authorization header
+  identity_source = "method.request.header.Authorization"
 }
 
 locals {
@@ -161,6 +180,14 @@ resource "aws_api_gateway_deployment" "hand_history" {
     aws_api_gateway_integration.list_files,
     aws_api_gateway_integration.download,
   ]
+  # Force redeploy when authorizer or auth-related config changes; API Gateway
+  # does not auto-redeploy on authorizer updates, which can cause stale 401s
+  triggers = {
+    redeployment = sha1(join(",", [
+      aws_api_gateway_authorizer.cognito.id,
+      local.cognito_user_pool_arn,
+    ]))
+  }
 }
 
 resource "aws_api_gateway_stage" "hand_history" {

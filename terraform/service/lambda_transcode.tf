@@ -1,16 +1,4 @@
-resource "null_resource" "build_transcode_lambda" {
-  triggers = {
-    handler  = filemd5("${path.module}/lambda/transcode/handler.py")
-    convert  = filemd5("${path.module}/../../src/convert.py")
-    build_sh = filemd5("${path.module}/lambda/transcode/build.sh")
-  }
-
-  provisioner "local-exec" {
-    command     = "bash ${path.module}/lambda/transcode/build.sh"
-    working_dir = path.module
-  }
-}
-
+# Run `bash lambda/transcode/build.sh` before `terraform apply`.
 resource "aws_lambda_function" "transcode" {
   filename         = "${path.module}/lambda/transcode/deployment.zip"
   function_name    = "pokerhands-transcode"
@@ -18,6 +6,7 @@ resource "aws_lambda_function" "transcode" {
   handler          = "handler.lambda_handler"
   source_code_hash = filebase64sha256("${path.module}/lambda/transcode/deployment.zip")
   runtime          = "python3.12"
+  timeout          = 10
 
   environment {
     variables = {
@@ -25,8 +14,6 @@ resource "aws_lambda_function" "transcode" {
       POKERHANDS_JOBS_TABLE = aws_dynamodb_table.pokerhands_jobs.name
     }
   }
-
-  depends_on = [null_resource.build_transcode_lambda]
 }
 
 resource "aws_lambda_event_source_mapping" "transcode_sqs" {
