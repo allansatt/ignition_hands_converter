@@ -111,6 +111,51 @@ resource "aws_lambda_permission" "upload_url" {
   source_arn    = "${aws_api_gateway_rest_api.hand_history.execution_arn}/*/*"
 }
 
+# CORS preflight for /upload-url
+resource "aws_api_gateway_method" "upload_url_options" {
+  rest_api_id   = aws_api_gateway_rest_api.hand_history.id
+  resource_id   = aws_api_gateway_resource.upload_url.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "upload_url_options" {
+  rest_api_id = aws_api_gateway_rest_api.hand_history.id
+  resource_id = aws_api_gateway_resource.upload_url.id
+  http_method = aws_api_gateway_method.upload_url_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "upload_url_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.hand_history.id
+  resource_id = aws_api_gateway_resource.upload_url.id
+  http_method = aws_api_gateway_method.upload_url_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+  response_models = {
+    "application/json" = "Empty"
+  }
+}
+
+resource "aws_api_gateway_integration_response" "upload_url_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.hand_history.id
+  resource_id = aws_api_gateway_resource.upload_url.id
+  http_method = aws_api_gateway_method.upload_url_options.http_method
+  status_code = aws_api_gateway_method_response.upload_url_options_200.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
+    "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'${var.cors_allowed_origin}'"
+  }
+}
+
 resource "aws_api_gateway_resource" "files" {
   rest_api_id = aws_api_gateway_rest_api.hand_history.id
   parent_id   = aws_api_gateway_rest_api.hand_history.root_resource_id
@@ -140,6 +185,51 @@ resource "aws_lambda_permission" "list_files" {
   function_name = aws_lambda_function.list_files.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.hand_history.execution_arn}/*/*"
+}
+
+# CORS preflight for /files
+resource "aws_api_gateway_method" "files_options" {
+  rest_api_id   = aws_api_gateway_rest_api.hand_history.id
+  resource_id   = aws_api_gateway_resource.files.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "files_options" {
+  rest_api_id = aws_api_gateway_rest_api.hand_history.id
+  resource_id = aws_api_gateway_resource.files.id
+  http_method = aws_api_gateway_method.files_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "files_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.hand_history.id
+  resource_id = aws_api_gateway_resource.files.id
+  http_method = aws_api_gateway_method.files_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+  response_models = {
+    "application/json" = "Empty"
+  }
+}
+
+resource "aws_api_gateway_integration_response" "files_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.hand_history.id
+  resource_id = aws_api_gateway_resource.files.id
+  http_method = aws_api_gateway_method.files_options.http_method
+  status_code = aws_api_gateway_method_response.files_options_200.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'${var.cors_allowed_origin}'"
+  }
 }
 
 resource "aws_api_gateway_resource" "download" {
@@ -173,12 +263,60 @@ resource "aws_lambda_permission" "download" {
   source_arn    = "${aws_api_gateway_rest_api.hand_history.execution_arn}/*/*"
 }
 
+# CORS preflight for /download
+resource "aws_api_gateway_method" "download_options" {
+  rest_api_id   = aws_api_gateway_rest_api.hand_history.id
+  resource_id   = aws_api_gateway_resource.download.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "download_options" {
+  rest_api_id = aws_api_gateway_rest_api.hand_history.id
+  resource_id = aws_api_gateway_resource.download.id
+  http_method = aws_api_gateway_method.download_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "download_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.hand_history.id
+  resource_id = aws_api_gateway_resource.download.id
+  http_method = aws_api_gateway_method.download_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+  response_models = {
+    "application/json" = "Empty"
+  }
+}
+
+resource "aws_api_gateway_integration_response" "download_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.hand_history.id
+  resource_id = aws_api_gateway_resource.download.id
+  http_method = aws_api_gateway_method.download_options.http_method
+  status_code = aws_api_gateway_method_response.download_options_200.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'${var.cors_allowed_origin}'"
+  }
+}
+
 resource "aws_api_gateway_deployment" "hand_history" {
   rest_api_id = aws_api_gateway_rest_api.hand_history.id
   depends_on = [
     aws_api_gateway_integration.upload_url,
+    aws_api_gateway_integration.upload_url_options,
     aws_api_gateway_integration.list_files,
+    aws_api_gateway_integration.files_options,
     aws_api_gateway_integration.download,
+    aws_api_gateway_integration.download_options,
   ]
   # Force redeploy when authorizer or auth-related config changes; API Gateway
   # does not auto-redeploy on authorizer updates, which can cause stale 401s

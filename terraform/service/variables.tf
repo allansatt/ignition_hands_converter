@@ -45,3 +45,9 @@ variable "transcode_dlq_max_receive_count" {
   type        = number
   default     = 3
 }
+
+variable "cors_allowed_origin" {
+  description = "Origin allowed for CORS (use '*' for any origin, or e.g. http://localhost:5173)"
+  type        = string
+  default     = "*"
+}
