@@ -24,7 +24,14 @@ def _sanitize_filename(name):
 
 
 def _resp(status, body):
-    return {"statusCode": status, "body": json.dumps(body, default=str), "headers": {"Content-Type": "application/json"}}
+    return {
+        "statusCode": status,
+        "body": json.dumps(body, default=str),
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+        },
+    }
 
 
 def _parse_body(event):
